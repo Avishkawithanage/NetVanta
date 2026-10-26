@@ -5,14 +5,15 @@ from __future__ import annotations
 
 import customtkinter as ctk
 
-from ..defaults import LIMITS, MAX_TRACE_HOPS
+from ..defaults import MAX_TRACE_HOPS
 from ..models.results import STATUS_ICON, CheckResult, Status
 from ..services import (full_analysis_service, link_health_service, adapter_service, arp_service, dns_cache_service, dns_service, internet_check_service,
-                        ip_config, ping_service, route_service, tcp_check_service, traceroute_service)
+                        ip_config, route_service, tcp_check_service, traceroute_service)
 from ..services.diagnosis_service import run_quick_diagnosis
 from ..utils.validation import (parse_ports, validate_host, validate_number, validate_resolver,
                                 validate_url)
 from . import theme
+from .ping_panel import PingPanel
 from .widgets.tool_panel import ToolPanel
 
 
@@ -28,35 +29,6 @@ class IPConfigPanel(ToolPanel):
 
     def work(self, params, cancel, emit):
         return ip_config.check_ip_configuration(cancel)
-
-
-class PingPanel(ToolPanel):
-    name = "Ping"
-    description = "Send ICMP echo requests and watch each reply live. No reply does not always mean a host is down."
-    run_label = "Start Ping"
-    streaming = True
-
-    def build_inputs(self, parent):
-        s = self.ctx.settings
-        self.target = self.field(parent, "Hostname or IP address", "", 260, 0, placeholder="e.g. 8.8.8.8 or example.com")
-        self.count = self.field(parent, "Packets", s.get("ping_count"), 80, 1)
-        self.timeout = self.field(parent, "Timeout (ms)", s.get("ping_timeout_ms"), 100, 2)
-        self.interval = self.field(parent, "Interval (s)", s.get("ping_interval_s"), 90, 3)
-
-    def read_params(self):
-        lo, hi = LIMITS["ping_count"]
-        count = validate_number(self.count.get(), "Packets", lo, hi)
-        lo, hi = LIMITS["ping_timeout_ms"]
-        timeout = validate_number(self.timeout.get(), "Timeout", lo, hi)
-        lo, hi = LIMITS["ping_interval_s"]
-        interval = validate_number(self.interval.get(), "Interval", lo, hi, integer=False)
-        return validate_host(self.target.get()), count, timeout, interval
-
-    def work(self, params, cancel, emit):
-        target, count, timeout, interval = params
-        emit(f"Pinging {target} ...")
-        return ping_service.run_ping(target, count, timeout, interval, cancel,
-                                     on_sample=lambda s: emit(ping_service.format_sample(s, target)))
 
 
 class QuickDiagnosisPanel(ToolPanel):

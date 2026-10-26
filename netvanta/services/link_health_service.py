@@ -23,7 +23,7 @@ DISCLAIMER = (
 )
 
 _LINK_SCRIPT = r"""
-$ad = @(Get-NetAdapter -Physical | ForEach-Object { @{ name=[string]$_.Name; desc=[string]$_.InterfaceDescription; status=[string]$_.Status; media=[string]$_.PhysicalMediaType; conn=[string]$_.MediaConnectionState; speed=[int64]$_.ReceiveLinkSpeed; duplex=[string]$_.FullDuplex } })
+$ad = @(Get-NetAdapter -Physical | ForEach-Object { @{ name=[string]$_.Name; desc=[string]$_.InterfaceDescription; status=[string]$_.Status; media=[string]$_.PhysicalMediaType; virtual=[bool]$_.Virtual; conn=[string]$_.MediaConnectionState; speed=[int64]$_.ReceiveLinkSpeed; duplex=[string]$_.FullDuplex } })
 $sd = @(Get-NetAdapterAdvancedProperty -RegistryKeyword '*SpeedDuplex' | ForEach-Object { @{ name=[string]$_.Name; value=[string]$_.DisplayValue; valid=@($_.ValidDisplayValues) } })
 @{adapters=$ad; speedduplex=$sd} | ConvertTo-Json -Depth 5 -Compress
 """
@@ -101,10 +101,11 @@ def parse_links(data) -> list[LinkInfo]:
     settings = {s.get("name"): s for s in as_list(data.get("speedduplex")) if isinstance(s, dict)}
     links = []
     for raw in as_list(data.get("adapters")):
-        if not isinstance(raw, dict) or "802.11" in str(raw.get("media", "")):
-            continue  # wired only
-        if "802.3" not in str(raw.get("media", "")) and not re.search(r"ethernet|gbe|lan", raw.get("desc", ""), re.I):
+        if not isinstance(raw, dict):
             continue
+        kind = adapter_service.classify(raw.get("name", ""), raw.get("desc", ""), str(raw.get("media", "")), bool(raw.get("virtual")))
+        if kind != "Ethernet":
+            continue  # real wired adapters only: no Wi-Fi, VPN, VMware/Hyper-V virtual adapters
         setting = settings.get(raw.get("name"), {})
         speed = raw.get("speed") or 0
         duplex = str(raw.get("duplex", "")).lower()
@@ -213,6 +214,8 @@ def run_link_health(cancel: threading.Event | None = None, on_line=None, burst_c
         result.duration_ms = (time.monotonic() - started) * 1000
         return result
 
+    if any(link.connected for link in links):
+        links = [link for link in links if link.connected]  # an unplugged spare port must not mask the one in use
     before_data, _ = run_powershell_json(_STATS_SCRIPT, 20, cancel)
     before = parse_counters(before_data)
     adapters, _err = adapter_service.get_adapters(cancel)
@@ -285,7 +288,9 @@ def run_link_health(cancel: threading.Event | None = None, on_line=None, burst_c
     result.simple = ("CABLE AND LINK RESULT\n\n" + "\n\n".join(simple_blocks)
                      + "\n\n(A laptop cannot measure cable length or find a short circuit - these are hints, not proof. "
                      "Press 'Show details' for speed, errors and test numbers.)")
-    first = assess(reports[0])[0]
-    result.summary = first[1] if len(reports) == 1 else f"{len(reports)} wired adapters checked. " + first[1]
+    severity = {Status.FAIL: 0, Status.WARNING: 1, Status.PASS: 2}
+    findings_all = [f for r in reports for f in assess(r)]
+    worst_finding = min(findings_all, key=lambda f: severity.get(f[0], 3))
+    result.summary = worst_finding[1] if len(reports) == 1 else f"{len(reports)} wired adapters checked. " + worst_finding[1]
     return result
 

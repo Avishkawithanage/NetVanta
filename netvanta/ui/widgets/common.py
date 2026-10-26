@@ -68,9 +68,12 @@ def set_text(box: ctk.CTkTextbox, text: str) -> None:
     box.configure(state="disabled")
 
 
-def append_text(box: ctk.CTkTextbox, text: str) -> None:
+def append_text(box: ctk.CTkTextbox, text: str, max_lines: int | None = None) -> None:
+    """Append a line and follow the end. max_lines trims the oldest lines so very long runs stay light."""
     box.configure(state="normal")
     box.insert("end", text + "\n")
+    if max_lines and int(box.index("end-1c").split(".")[0]) > max_lines + 500:
+        box.delete("1.0", "501.0")
     box.see("end")
     box.configure(state="disabled")
 

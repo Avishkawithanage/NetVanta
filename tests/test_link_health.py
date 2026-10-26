@@ -126,3 +126,12 @@ def test_icmp_filtered_gateway_is_not_blamed_when_internet_works():
 
 def test_skipped_cable_layer_never_blamed():
     assert locate(S.SKIPPED)[0] == ""
+
+
+def test_virtual_wired_adapters_are_ignored():
+    data = {"adapters": [
+        {"name": "Ethernet", "desc": "Realtek PCIe GbE", "status": "Up", "media": "802.3", "virtual": False, "conn": "Connected", "speed": 1_000_000_000, "duplex": "True"},
+        {"name": "VMware Network Adapter VMnet1", "desc": "VMware Virtual Ethernet Adapter", "status": "Up", "media": "802.3", "virtual": True, "conn": "Connected", "speed": 100_000_000, "duplex": "True"},
+        {"name": "vEthernet (WSL)", "desc": "Hyper-V Virtual Ethernet Adapter", "status": "Up", "media": "802.3", "virtual": True, "conn": "Connected", "speed": 10_000_000_000, "duplex": "True"},
+    ], "speedduplex": []}
+    assert [x.name for x in lh.parse_links(data)] == ["Ethernet"]

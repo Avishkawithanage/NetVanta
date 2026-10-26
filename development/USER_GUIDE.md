@@ -41,7 +41,7 @@ timings - and **Show simple view** to go back. **Show raw output** displays the 
 | Tool | How to use it |
 |---|---|
 | **IP Configuration** | Press *Check IP Configuration*. You see your main connection (IP, mask, gateway, DNS). *Show details* lists every adapter, IPv6 and traffic. A `169.254.x.x` address means DHCP failed. |
-| **Ping** | Enter a host or IP, packets/timeout/interval, press *Start Ping*. Results appear live. *No reply* can also mean ICMP is blocked. |
+| **Ping** | Enter a host or IP, packets/timeout/interval, press *Start Ping*. Tick **Continuous (until Stop)** to keep pinging for as long as you like. The left box shows every reply; the right box lists **only the lost / timed-out packets with their time**, and "replies are back after N lost packets" when it recovers. A counter line shows sent / received / lost % / min-avg-max / running time. When you press Stop, a **loss-event summary** lists each outage (start, end, length). Export includes a time and reason for every packet. *No reply* can also mean ICMP is blocked. |
 | **Full Analysis** | Best starting point. Runs the cable/link check *and* Quick Diagnosis (about 30 s) and shows a **PROBLEM LOCATION** table: cable, addressing, local network, DNS, internet, target. See section 4a. |
 | **Cable & Link Health** | Plug an Ethernet cable into the laptop, press *Check Cable & Link*. See section 4a. |
 | **Quick Diagnosis** | Optionally enter a target, press *Run Quick Diagnosis* (10-25 s). Read the CHECKS first, then the FINDINGS and their *Next step*. Steps marked *(external)* contact the internet. |

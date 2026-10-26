@@ -60,8 +60,7 @@ class ToolPanel(ctk.CTkFrame):
                                     anchor="w", justify="left", wraplength=520)
         self.summary.pack(side="left", fill="x", expand=True)
 
-        self.output = output_box(self, "word" if self.wrap_output else "none")
-        self.output.grid(row=3, column=0, sticky="nsew")
+        self.build_output().grid(row=3, column=0, sticky="nsew")
 
         bottom = ctk.CTkFrame(self, fg_color="transparent")
         bottom.grid(row=4, column=0, sticky="ew", pady=(10, 0))
@@ -86,6 +85,14 @@ class ToolPanel(ctk.CTkFrame):
     def build_inputs(self, parent) -> None:
         ctk.CTkLabel(parent, text="No options - just press the button.", text_color=theme.MUTED,
                      font=theme.font(12)).pack(padx=16, pady=14, anchor="w")
+
+    def build_output(self):
+        """Create self.output and return the widget to place in the layout (override for custom result areas)."""
+        self.output = output_box(self, "word" if self.wrap_output else "none")
+        return self.output
+
+    def reset_view(self) -> None:
+        """Called when a run starts or the panel is cleared; custom result areas reset themselves here."""
 
     def read_params(self) -> Any:
         return None
@@ -122,6 +129,7 @@ class ToolPanel(ctk.CTkFrame):
         self.raw_btn.configure(text="Show raw output")
         self.detail_btn.configure(text="Show details")
         set_text(self.output, "")
+        self.reset_view()
         self.chip.set_busy()
         self.summary.configure(text="Working… you can keep using the app.")
         self.task = BackgroundTask(
@@ -144,6 +152,7 @@ class ToolPanel(ctk.CTkFrame):
             return
         self.result = None
         set_text(self.output, "")
+        self.reset_view()
         self.chip.set_status(None)
         self.summary.configure(text="")
         self._update_buttons()

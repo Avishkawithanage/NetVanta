@@ -120,3 +120,45 @@ def test_run_ping_cancel_is_partial_not_complete():
 
 def test_resolve_target_ip_passthrough():
     assert ps.resolve_target("1.2.3.4") == ("1.2.3.4", "")
+
+
+def _sample(seq, ok, ts):
+    return ps.PingSample(seq, ok, 1.0 if ok else None, "1.1.1.1", "" if ok else "Request timed out.", ts)
+
+
+def test_find_outages_groups_consecutive_losses():
+    s = [_sample(1, True, "2026-01-01T10:00:00+00:00"), _sample(2, False, "2026-01-01T10:00:01+00:00"),
+         _sample(3, False, "2026-01-01T10:00:02+00:00"), _sample(4, True, "2026-01-01T10:00:05+00:00"),
+         _sample(5, False, "2026-01-01T10:00:06+00:00")]
+    out = ps.find_outages(s)
+    assert len(out) == 2
+    assert (out[0].lost, out[0].first_seq, out[0].last_seq, out[0].recovered) == (2, 2, 3, True)
+    assert out[0].seconds == 4
+    assert out[1].recovered is False and out[1].lost == 1
+    assert "lost" in ps.format_outage(out[0]) and "no reply until you stopped" in ps.format_outage(out[1])
+    assert ps.find_outages([_sample(1, True, "2026-01-01T10:00:00+00:00")]) == []
+
+
+def test_continuous_ping_runs_until_stopped_and_reports_loss_events():
+    cancel = threading.Event()
+    outs = iter([_cmd(REPLY), _cmd(TIMEOUT), _cmd(TIMEOUT), _cmd(REPLY), _cmd(REPLY)])
+    seen = []
+
+    def on_sample(sample):
+        seen.append(sample)
+        if len(seen) == 5:
+            cancel.set()
+
+    with mock.patch.object(ps, "run_command", side_effect=lambda *a, **k: next(outs)):
+        r = ps.run_ping("8.8.8.8", 0, 1000, 0, cancel, on_sample)
+    assert len(seen) == 5 and all(s.ts for s in seen)
+    assert not r.cancelled and r.status == Status.WARNING
+    assert "Stopped after 5 packets" in r.summary and "1 loss event" in r.summary
+    assert "LOSS EVENTS (1)" in r.details
+    assert [row["success"] for row in r.rows] == [True, False, False, True, True]
+    assert r.rows[1]["note"] and r.rows[1]["time_utc"]
+
+
+def test_failure_message_is_the_reason_not_the_statistics_header():
+    assert ps.parse_ping_output(TIMEOUT).message == "Request timed out."
+    assert ps.parse_ping_output(UNREACH).message.startswith("Reply from 10.0.0.1")

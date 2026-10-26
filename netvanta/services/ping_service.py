@@ -8,9 +8,10 @@ import socket
 import threading
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Callable
 
-from ..models.results import CheckResult, Status
+from ..models.results import CheckResult, Status, utc_now_iso
 from ..utils.subprocess_runner import run_command
 
 ICMP_NOTE = "No reply does not prove a host is down: ICMP can be blocked or deprioritised by firewalls and routers."
@@ -25,6 +26,54 @@ class PingSample:
     rtt_ms: float | None = None
     address: str = ""
     message: str = ""
+    ts: str = ""  # UTC ISO time the probe finished (set by run_ping)
+
+
+@dataclass
+class Outage:
+    """A run of consecutive lost packets."""
+    start_ts: str
+    end_ts: str  # time of recovery, or of the last lost packet if it never recovered
+    first_seq: int
+    last_seq: int
+    lost: int
+    recovered: bool
+
+    @property
+    def seconds(self) -> float:
+        try:
+            return max(0.0, (datetime.fromisoformat(self.end_ts) - datetime.fromisoformat(self.start_ts)).total_seconds())
+        except ValueError:
+            return 0.0
+
+
+def find_outages(samples: list["PingSample"]) -> list[Outage]:
+    """Group consecutive failed samples into outages with start time, duration and recovery."""
+    outages: list[Outage] = []
+    current: list[PingSample] = []
+    for s in samples:
+        if not s.success:
+            current.append(s)
+            continue
+        if current:
+            outages.append(Outage(current[0].ts, s.ts or current[-1].ts, current[0].seq, current[-1].seq, len(current), True))
+            current = []
+    if current:
+        outages.append(Outage(current[0].ts, current[-1].ts, current[0].seq, current[-1].seq, len(current), False))
+    return outages
+
+
+def local_time(ts: str) -> str:
+    try:
+        return datetime.fromisoformat(ts).astimezone().strftime("%H:%M:%S")
+    except ValueError:
+        return ts or "--:--:--"
+
+
+def format_outage(o: Outage) -> str:
+    span = f"{local_time(o.start_ts)} -> {local_time(o.end_ts)}" if o.recovered else f"from {local_time(o.start_ts)}"
+    ending = f"~{o.seconds:.0f} s, then replies came back" if o.recovered else "no reply until you stopped"
+    return f"{span}   {o.lost} packet(s) lost (#{o.first_seq}-#{o.last_seq})   {ending}"
 
 
 @dataclass
@@ -70,7 +119,10 @@ def parse_ping_output(text: str, seq: int = 1, address: str = "") -> PingSample:
             if "<" in line[: match.end()] and value <= 1:
                 value = 0.5
             return PingSample(seq, True, value, address, line.strip())
-    cleaned = [ln.strip() for ln in text.splitlines() if ln.strip() and "," not in ln and "=" not in ln]
+    cleaned = [
+        ln.strip() for ln in text.splitlines()
+        if ln.strip() and "," not in ln and "=" not in ln and not ln.strip().endswith(":") and not ln.strip().lower().startswith("pinging")
+    ]
     message = cleaned[-1] if cleaned else "No reply"
     return PingSample(seq, False, None, address, message)
 
@@ -147,32 +199,41 @@ def run_ping(
         result.duration_ms = (time.monotonic() - started) * 1000
         return result
 
+    continuous = count == 0  # 0 = keep pinging until the user presses Stop
     samples: list[PingSample] = []
-    for seq in range(1, count + 1):
-        if cancel.is_set():
-            break
+    seq = 0
+    while not cancel.is_set() and (continuous or seq < count):
+        seq += 1
         sample = ping_once(address, timeout_ms, seq, cancel)
         if sample.message == "Cancelled":
             break
+        sample.ts = utc_now_iso()
         samples.append(sample)
         if on_sample:
             on_sample(sample)
-        if seq < count and cancel.wait(interval_s):
+        if (continuous or seq < count) and cancel.wait(interval_s):
             break
 
     stats = summarize(samples)
+    outages = find_outages(samples)
     result.duration_ms = (time.monotonic() - started) * 1000
     result.rows = [
-        {"seq": s.seq, "address": s.address, "success": s.success, "rtt_ms": s.rtt_ms if s.rtt_ms is not None else ""}
+        {"seq": s.seq, "time_utc": s.ts, "address": s.address, "success": s.success,
+         "rtt_ms": s.rtt_ms if s.rtt_ms is not None else "", "note": "" if s.success else s.message}
         for s in samples
     ]
     lines = [f"Target: {target}" + (f" ({address})" if address != target else "")]
     lines.append(f"Sent {stats.sent}, received {stats.received}, lost {stats.lost} ({stats.loss_pct:g}% loss)")
     if stats.avg_ms is not None:
         lines.append(f"Latency: min {stats.min_ms:g} ms, avg {stats.avg_ms:g} ms, max {stats.max_ms:g} ms")
+    if outages:
+        lines.append(f"\nLOSS EVENTS ({len(outages)})")
+        lines += [f"  {format_outage(o)}" for o in outages[:200]]
+        if len(outages) > 200:
+            lines.append(f"  ... and {len(outages) - 200} more (see the exported file)")
     result.details = "\n".join(lines)
 
-    if cancel.is_set():
+    if cancel.is_set() and not continuous:
         result.cancelled = True
         result.status = Status.UNKNOWN
         result.summary = f"Stopped by user after {stats.sent} packet(s) - results are partial."
@@ -190,4 +251,9 @@ def run_ping(
     else:
         result.status = Status.PASS
         result.summary = f"{target} replied to all {stats.sent} packet(s), average {stats.avg_ms:g} ms."
+    if continuous and cancel.is_set() and stats.sent:
+        minutes = result.duration_ms / 60000
+        result.summary = f"Stopped after {stats.sent} packets ({minutes:.1f} min). " + result.summary
+        if outages:
+            result.summary += f" {len(outages)} loss event(s)."
     return result
