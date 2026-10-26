@@ -36,14 +36,16 @@ def _pkg_version(name: str) -> str:
         return "bundled"
 
 
-class SettingsView(ctk.CTkScrollableFrame):
+class SettingsView(ctk.CTkFrame):
     def __init__(self, master, ctx: AppContext):
         super().__init__(master, fg_color="transparent")
+        body = ctk.CTkScrollableFrame(self, fg_color="transparent")  # the scroller lives inside a plain frame so tkraise() works
+        body.pack(fill="both", expand=True)
         self.ctx = ctx
         self.vars: dict[str, ctk.StringVar] = {}
-        title_block(self, "Settings & About", "Defaults used by the tools. Changes apply after you press Save.").pack(anchor="w", pady=(0, 10))
+        title_block(body, "Settings & About", "Defaults used by the tools. Changes apply after you press Save.").pack(anchor="w", pady=(0, 10))
 
-        box = card(self)
+        box = card(body)
         box.pack(fill="x", pady=(0, 12))
         s = ctx.settings
         grid = ctk.CTkFrame(box, fg_color="transparent")
@@ -92,7 +94,7 @@ class SettingsView(ctk.CTkScrollableFrame):
         self.message = ctk.CTkLabel(buttons, text="", font=theme.font(12), text_color=theme.MUTED)
         self.message.pack(side="left", padx=8)
 
-        about = card(self)
+        about = card(body)
         about.pack(fill="x", pady=(0, 12))
         ctk.CTkLabel(about, text=f"About {APP_NAME}", font=theme.font(15, "bold")).pack(anchor="w", padx=16, pady=(12, 4))
         info = (
