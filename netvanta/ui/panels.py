@@ -18,20 +18,21 @@ from .widgets.tool_panel import ToolPanel
 
 class IPConfigPanel(ToolPanel):
     name = "IP Configuration"
-    description = "Shows every network adapter with its addresses, gateway and DNS servers. Read-only."
+    description = "Shows your main connection first (IP, mask, gateway, DNS), then a short list of the other adapters. Read-only."
     run_label = "Check IP Configuration"
     save_history = True
 
     def build_inputs(self, parent):
-        self.include = ctk.CTkCheckBox(parent, text="Include disconnected and virtual adapters")
-        self.include.select()
-        self.include.pack(padx=16, pady=14, anchor="w")
+        self.include = ctk.CTkCheckBox(parent, text="Show disconnected & virtual adapters")
+        self.include.pack(padx=16, pady=(14, 4), anchor="w")
+        self.detailed = ctk.CTkCheckBox(parent, text="Show full details (IPv6 addresses, traffic counters)")
+        self.detailed.pack(padx=16, pady=(0, 14), anchor="w")
 
     def read_params(self):
-        return bool(self.include.get())
+        return bool(self.include.get()), bool(self.detailed.get())
 
     def work(self, params, cancel, emit):
-        return ip_config.check_ip_configuration(cancel, include_inactive=params)
+        return ip_config.check_ip_configuration(cancel, include_inactive=params[0], detailed=params[1])
 
 
 class PingPanel(ToolPanel):
