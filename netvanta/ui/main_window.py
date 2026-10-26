@@ -97,6 +97,11 @@ class MainWindow(ctk.CTk):
         view = self.views.get(name)
         if not view:
             return
+        # Only the visible view stays in the layout; hidden ones are not re-laid-out while resizing (smooth resize).
+        for other in self.views.values():
+            if other is not view:
+                other.grid_remove()
+        view.grid()
         view.tkraise()
         for key, btn in self.nav_buttons.items():
             active = key == name

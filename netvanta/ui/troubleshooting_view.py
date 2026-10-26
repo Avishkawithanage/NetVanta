@@ -41,6 +41,10 @@ class TroubleshootingView(ctk.CTkFrame):
         if name not in self.panels:
             return
         self.current = name
+        for key, panel in self.panels.items():
+            if key != name:
+                panel.grid_remove()  # hidden tools are not re-laid-out while the window is resized
+        self.panels[name].grid()
         self.panels[name].tkraise()
         for key, btn in self.buttons.items():
             btn.configure(fg_color=theme.ACCENT if key == name else "transparent",
