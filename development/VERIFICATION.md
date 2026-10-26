@@ -6,7 +6,7 @@ Recorded on Windows 10 Home 22H2, Python 3.14.3.
 
 | Check | Result |
 |---|---|
-| `pytest -q` | **108 passed** |
+| `pytest -q` | **123 passed** |
 | `ruff check netvanta app.py tests tools` | clean |
 | `python app.py --smoke-test` (all 5 views build and render) | exit code 0, empty log |
 | `dist\NetVanta\NetVanta.exe --smoke-test` (PyInstaller build) | exit code 0 |
@@ -21,7 +21,7 @@ parsers, internet-check classification, monitor state machine (no duplicate even
 ## Manual / live checks performed
 
 - IP Configuration, ARP, routes, DNS cache, DNS lookup, TCP, traceroute and ping run against the real machine and returned real data.
-- Quick Diagnosis ran end to end on a live Wi-Fi connection.
+- Quick Diagnosis, Cable & Link Health and Full Analysis ran end to end on a live Wi-Fi connection (the unplugged Ethernet adapter was correctly reported as no link; the cable layer was skipped in Full Analysis). Not yet tried with a real cable plugged in.
 - Live Monitor: reachable hosts, an unreachable host (one FAIL event), recovery path covered by tests.
 - Dashboard, History, Troubleshooting and Monitor views inspected via screenshots.
 

@@ -7,7 +7,7 @@ import customtkinter as ctk
 
 from ..defaults import LIMITS, MAX_TRACE_HOPS
 from ..models.results import CheckResult, Status
-from ..services import (adapter_service, arp_service, dns_cache_service, dns_service, internet_check_service,
+from ..services import (full_analysis_service, link_health_service, adapter_service, arp_service, dns_cache_service, dns_service, internet_check_service,
                         ip_config, ping_service, route_service, tcp_check_service, traceroute_service)
 from ..services.diagnosis_service import run_quick_diagnosis
 from ..utils.validation import (parse_ports, validate_host, validate_number, validate_resolver,
@@ -69,6 +69,7 @@ class QuickDiagnosisPanel(ToolPanel):
                    "suggests. Steps marked 'external' contact the internet.")
     run_label = "Run Quick Diagnosis"
     streaming = True
+    wrap_output = True
 
     def build_inputs(self, parent):
         self.target = self.field(parent, "Optional target to include", "", 300, 0, placeholder="e.g. a server or website")
@@ -256,10 +257,52 @@ class PublicIPPanel(ToolPanel):
         return internet_check_service.get_public_ip(self.ctx.settings.get("public_ip_endpoint"))
 
 
+class LinkHealthPanel(ToolPanel):
+    name = "Cable & Link Health"
+    description = ("Checks a wired connection for signs of a bad cable or port: negotiated speed and duplex, error counters, link drops "
+                   "and loss on a burst of large pings to the gateway. It cannot measure cable length or find a short/open - use a hardware tester for that.")
+    run_label = "Check Cable & Link"
+    streaming = True
+    wrap_output = True
+
+    def work(self, params, cancel, emit):
+        return link_health_service.run_link_health(cancel, on_line=emit)
+
+    def footer(self, result):
+        return result.summary + "\n\n" + link_health_service.DISCLAIMER
+
+
+class FullAnalysisPanel(ToolPanel):
+    name = "Full Analysis"
+    description = ("Runs the cable/link check and the connectivity checks together (about 30 seconds) and tells you which layer - cable, addressing, "
+                   "local network, DNS, internet or the target - is the most likely problem area. Contains external steps.")
+    run_label = "Run Full Analysis"
+    streaming = True
+    wrap_output = True
+
+    def build_inputs(self, parent):
+        self.target = self.field(parent, "Optional target to include", "", 300, 0, placeholder="e.g. a server or website")
+
+    def read_params(self):
+        text = self.target.get().strip()
+        return validate_host(text) if text else ""
+
+    def work(self, params, cancel, emit):
+        return full_analysis_service.run_full_analysis(self.ctx.settings.values, params, cancel, emit)
+
+    def footer(self, result):
+        text = result.render()
+        start = text.find("PROBLEM LOCATION")
+        end = text.find("EVIDENCE - CABLE")
+        return text[start:end].strip() if start >= 0 and end > start else text
+
+
 PANELS: list[tuple[str, type[ToolPanel]]] = [
     ("IP Configuration", IPConfigPanel),
     ("Ping", PingPanel),
+    ("Full Analysis", FullAnalysisPanel),
     ("Quick Diagnosis", QuickDiagnosisPanel),
+    ("Cable & Link Health", LinkHealthPanel),
     ("DNS Lookup", DNSPanel),
     ("Traceroute", TraceroutePanel),
     ("TCP Port Test", TCPPanel),

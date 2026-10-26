@@ -54,9 +54,9 @@ def card(master, **kw) -> ctk.CTkFrame:
     return ctk.CTkFrame(master, fg_color=theme.SURFACE, corner_radius=12, border_width=1, border_color=theme.BORDER, **kw)
 
 
-def output_box(master) -> ctk.CTkTextbox:
+def output_box(master, wrap: str = "none") -> ctk.CTkTextbox:
     box = ctk.CTkTextbox(master, font=theme.MONO, fg_color=theme.SURFACE, text_color=theme.TEXT, corner_radius=10,
-                         border_width=1, border_color=theme.BORDER, wrap="none", activate_scrollbars=True)
+                         border_width=1, border_color=theme.BORDER, wrap=wrap, activate_scrollbars=True)
     box.configure(state="disabled")
     return box
 

@@ -10,7 +10,7 @@
 | System data | Windows PowerShell (`Get-NetAdapter`, `Get-NetIPAddress`, `Get-NetRoute`, `Get-DnsClientServerAddress`, `Get-DnsClientCache`) returning JSON | Locale-independent and structured; no fragile text parsing |
 | ICMP / trace / ARP | `ping.exe`, `tracert.exe`, `arp.exe` | Raw ICMP sockets need admin rights; the built-ins do not |
 | Storage | SQLite (`sqlite3`), JSON settings | Local, zero-config, parameterised SQL |
-| Tests | pytest (108 tests) | Mocks for subprocess/network |
+| Tests | pytest (123 tests) | Mocks for subprocess/network |
 | Lint | ruff | Fast, single tool |
 | Packaging | PyInstaller (one-folder) + Inno Setup 6 | Standalone exe, then a conventional per-user installer |
 

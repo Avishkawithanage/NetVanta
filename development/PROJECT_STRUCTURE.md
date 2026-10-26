@@ -36,6 +36,8 @@ NetVanta/
     │   ├── tcp_check_service.py   Bounded TCP connects
     │   ├── internet_check_service.py  HTTPS checks + public IP (external)
     │   ├── diagnosis_service.py   Quick Diagnosis steps + rule engine (interpret())
+    │   ├── link_health_service.py Wired link evidence: speed/duplex, errors, link drops, burst ping; assess() rules
+    │   ├── full_analysis_service.py  Link health + diagnosis -> layered "where is the problem" verdict (locate())
     │   └── monitor_service.py     Live Monitor scheduler and state machine
     ├── data/
     │   ├── database.py         SQLite wrapper (lock + transactions)
@@ -48,7 +50,7 @@ NetVanta/
         ├── theme.py            Colours, fonts, Treeview style
         ├── dashboard_view.py  troubleshooting_view.py  monitor_view.py
         ├── history_view.py  settings_view.py
-        ├── panels.py           The 12 troubleshooting tools (thin shells over services)
+        ├── panels.py           The 14 troubleshooting tools (thin shells over services)
         └── widgets/            ToolPanel base class, common widgets, SortableTree
 ```
 

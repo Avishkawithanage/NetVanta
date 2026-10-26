@@ -26,6 +26,7 @@ class ToolPanel(ctk.CTkFrame):
     filterable = False
     save_history = True
     has_stop = True
+    wrap_output = False  # True for prose-heavy tools; tables keep wrap off so columns stay aligned
 
     def __init__(self, master, ctx: AppContext):
         super().__init__(master, fg_color="transparent")
@@ -57,7 +58,7 @@ class ToolPanel(ctk.CTkFrame):
                                     anchor="w", justify="left", wraplength=520)
         self.summary.pack(side="left", fill="x", expand=True)
 
-        self.output = output_box(self)
+        self.output = output_box(self, "word" if self.wrap_output else "none")
         self.output.grid(row=3, column=0, sticky="nsew")
 
         bottom = ctk.CTkFrame(self, fg_color="transparent")

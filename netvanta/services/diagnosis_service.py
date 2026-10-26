@@ -183,7 +183,7 @@ def run_quick_diagnosis(
 
     result = CheckResult(tool="Quick Diagnosis", target=extra_target)
     result.duration_ms = (time.monotonic() - started) * 1000
-    result.rows = [{"step": s.title, "status": s.status.value, "evidence": s.evidence, "external": s.external} for s in steps]
+    result.rows = [{"key": s.key, "step": s.title, "status": s.status.value, "evidence": s.evidence, "external": s.external} for s in steps]
     body = "\n\n".join(s.line() for s in steps)
     if cancel.is_set():
         result.cancelled, result.status = True, Status.UNKNOWN

@@ -93,10 +93,12 @@ def resolve_target(target: str) -> tuple[str, str]:
 
 
 def ping_once(
-    address: str, timeout_ms: int = 2000, seq: int = 1, cancel: threading.Event | None = None
+    address: str, timeout_ms: int = 2000, seq: int = 1, cancel: threading.Event | None = None, size: int | None = None
 ) -> PingSample:
     """One ICMP echo to an already-resolved IP address."""
     args = ["ping", "-n", "1", "-w", str(int(timeout_ms))]
+    if size:
+        args += ["-l", str(int(size))]
     if ":" in address:
         args.append("-6")
     args.append(address)

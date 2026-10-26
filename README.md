@@ -19,6 +19,8 @@ To remove it use *Settings > Apps > NetVanta > Uninstall*. Your history/settings
 | Area | What it does |
 |---|---|
 | **Dashboard** | Current adapter, IP, subnet, gateway, DNS, gateway ping, internet check (on demand), monitor summary, recent events |
+| **Full Analysis** | Cable/link health + connectivity checks combined into a "which layer is the problem" table (cable, addressing, local network, DNS, internet, target) |
+| **Cable & Link Health** | Wired-link evidence: negotiated speed vs capability, duplex, errors, link drops, burst-ping loss. Indirect only - not a hardware cable tester |
 | **Quick Diagnosis** | Real checks (adapter, IP, gateway, gateway ping, DNS, external TCP, HTTPS, optional target) + evidence-based findings |
 | **IP Configuration / Adapter Information** | Every adapter with addresses, gateway, DNS, MAC, speed, traffic. Detects Wi-Fi / Ethernet / VPN / Virtual |
 | **Ping** | Live replies, loss % and min/avg/max, Stop button, clear error messages |
