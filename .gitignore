@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Local data, logs, secrets
+*.db
+*.log
+.env
+settings.local.json
+
+# Build output
+build/
+dist/
+installer/Output/
+*.spec.bak
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.claude/
+
+# Exported installer (distribute via GitHub Releases)
+release/
