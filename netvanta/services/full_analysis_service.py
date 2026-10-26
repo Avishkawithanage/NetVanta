@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 import time
 
-from ..models.results import CheckResult, Status
+from ..models.results import STATUS_ICON, STATUS_WORD, CheckResult, Status
 from . import link_health_service
 from .diagnosis_service import run_quick_diagnosis
 
@@ -75,17 +75,17 @@ def run_full_analysis(settings: dict, target: str = "", cancel: threading.Event 
         if emit:
             emit(text)
 
-    say("STEP A - cable and link health (about 10 seconds) ...")
-    link = link_health_service.run_link_health(cancel, on_line=say)
-    say(f"   -> {link.status.value}: {link.summary}\n")
+    say("Step 1 of 2: checking the cable and link (about 10 seconds) ...")
+    link = link_health_service.run_link_health(cancel, on_line=lambda text: None)
+    say(f"   {STATUS_ICON[link.status]}  Cable and link check finished")
     result = CheckResult(tool="Full Analysis", target=target)
     if cancel.is_set():
         result.cancelled, result.status = True, U
         result.summary = "Stopped by user - partial result, not a complete analysis."
         return result
 
-    say("STEP B - connectivity checks (about 15 seconds) ...")
-    diag = run_quick_diagnosis(settings, target, cancel, on_step=lambda step: say(step.line() + "\n"))
+    say("Step 2 of 2: checking connectivity (about 15 seconds) ...")
+    diag = run_quick_diagnosis(settings, target, cancel, on_step=lambda step: say(f"   {STATUS_ICON[step.status]}  {step.title}"))
     if diag.cancelled:
         result.cancelled, result.status = True, U
         result.summary = "Stopped by user - partial result, not a complete analysis."
@@ -102,13 +102,14 @@ def run_full_analysis(settings: dict, target: str = "", cancel: threading.Event 
         cable_level = link.status
     layers = build_layers(cable_level, steps)
     key, level, verdict = locate(layers)
-    table = "\n".join(f"  {label:<42}[{layers[k].value}]" for k, label in LAYERS)
+    table = "\n".join(f"  {STATUS_ICON[layers[k]]} {STATUS_WORD[layers[k]]:<12}{label}" for k, label in LAYERS)
     result.status = level
     result.summary = verdict.split(". ")[0] + "." if key else "No problem found in any tested layer."
     result.recommendation = ""
+    location = "WHERE IS THE PROBLEM?\n\n" + table + "\n\n" + verdict + note
+    result.simple = location + "\n\n(Press 'Show details' for the evidence behind each layer.)"
     result.details = (
-        "PROBLEM LOCATION\n\n" + table + "\n\n" + verdict + note +
-        "\n\nEVIDENCE - CABLE AND LINK\n\n" + link.details + "\n\nEVIDENCE - CONNECTIVITY\n\n" + diag.details
+        location + "\n\nEVIDENCE - CABLE AND LINK\n\n" + link.details + "\n\nEVIDENCE - CONNECTIVITY\n\n" + diag.details
     )
     result.rows = [{"layer": label.strip(), "status": layers[k].value} for k, label in LAYERS]
     result.duration_ms = (time.monotonic() - started) * 1000

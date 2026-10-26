@@ -60,6 +60,12 @@ def read_routes(cancel: threading.Event | None = None) -> CheckResult:
     result.details = "\n".join(
         f"{r['destination']:<44}{r['netmask']:<17}{r['next_hop']:<40}{str(r['interface']):<22}{r['metric']}" for r in rows
     )
+    defaults = [r for r in rows if r["destination"] in ("0.0.0.0/0", "::/0")]
+    result.simple = (
+        "Traffic that has no more specific route goes through the default route(s):\n\n"
+        + "\n".join(f"  {r['destination']:<10} via {r['next_hop']:<40} on {r['interface']}  (cost {r['metric']})" for r in defaults)
+        + f"\n\n({len(rows)} routes in total - press 'Show details' for the whole table.)"
+    ) if defaults else ""
     if rows:
         header = f"{'Destination':<44}{'Netmask':<17}{'Next hop':<40}{'Interface':<22}Metric"
         result.details = header + "\n" + result.details

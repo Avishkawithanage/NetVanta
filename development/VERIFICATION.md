@@ -6,7 +6,7 @@ Recorded on Windows 10 Home 22H2, Python 3.14.3.
 
 | Check | Result |
 |---|---|
-| `pytest -q` | **123 passed** |
+| `pytest -q` | **127 passed** |
 | `ruff check netvanta app.py tests tools` | clean |
 | `python app.py --smoke-test` (all 5 views build and render) | exit code 0, empty log |
 | `dist\NetVanta\NetVanta.exe --smoke-test` (PyInstaller build) | exit code 0 |

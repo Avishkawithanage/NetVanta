@@ -27,6 +27,7 @@ class ToolPanel(ctk.CTkFrame):
     save_history = True
     has_stop = True
     wrap_output = False  # True for prose-heavy tools; tables keep wrap off so columns stay aligned
+    replace_on_done = False  # streaming tools: swap the live progress lines for the final friendly view
 
     def __init__(self, master, ctx: AppContext):
         super().__init__(master, fg_color="transparent")
@@ -34,6 +35,7 @@ class ToolPanel(ctk.CTkFrame):
         self.task: BackgroundTask | None = None
         self.result: CheckResult | None = None
         self._showing_raw = False
+        self._detailed = False
         self.columnconfigure(0, weight=1)
         self.rowconfigure(3, weight=1)
 
@@ -63,6 +65,8 @@ class ToolPanel(ctk.CTkFrame):
 
         bottom = ctk.CTkFrame(self, fg_color="transparent")
         bottom.grid(row=4, column=0, sticky="ew", pady=(10, 0))
+        self.detail_btn = primary_button(bottom, "Show details", self.toggle_details, width=140)
+        self.detail_btn.pack(side="left", padx=(0, 8))
         self.copy_btn = secondary_button(bottom, "Copy summary", self.copy_summary, width=130)
         self.copy_btn.pack(side="left")
         self.export_btn = secondary_button(bottom, "Export CSV / JSON…", self.export, width=160)
@@ -114,7 +118,9 @@ class ToolPanel(ctk.CTkFrame):
             self.chip.set_status(Status.FAIL, "INPUT")
             self.summary.configure(text=str(exc))
             return
-        self.result, self._showing_raw = None, False
+        self.result, self._showing_raw, self._detailed = None, False, False
+        self.raw_btn.configure(text="Show raw output")
+        self.detail_btn.configure(text="Show details")
         set_text(self.output, "")
         self.chip.set_busy()
         self.summary.configure(text="Working… you can keep using the app.")
@@ -157,7 +163,7 @@ class ToolPanel(ctk.CTkFrame):
         self.result = result
         self.chip.set_status(Status.UNKNOWN, "STOPPED") if result.cancelled else self.chip.set_status(result.status)
         self.summary.configure(text=result.summary)
-        if self.streaming and self.output.get("1.0", "end").strip():
+        if self.streaming and not self.replace_on_done and self.output.get("1.0", "end").strip():
             append_text(self.output, "\n" + "-" * 60 + "\n" + self.footer(result))
         else:
             self.refresh_view()
@@ -186,6 +192,8 @@ class ToolPanel(ctk.CTkFrame):
             return
         if self._showing_raw:
             set_text(self.output, self.result.raw)
+        elif self.result.simple and not self._detailed and not self.filter_var.get().strip():
+            set_text(self.output, self.result.simple + (f"\n\nError: {self.result.error}" if self.result.error else ""))
         else:
             set_text(self.output, self.render_body(self.result, self.filter_var.get().strip()))
 
@@ -193,7 +201,16 @@ class ToolPanel(ctk.CTkFrame):
         if not self.result:
             return
         self._showing_raw = not self._showing_raw
-        self.raw_btn.configure(text="Show summary" if self._showing_raw else "Show raw output")
+        self.raw_btn.configure(text="Back to results" if self._showing_raw else "Show raw output")
+        self.refresh_view()
+
+    def toggle_details(self) -> None:
+        if not self.result or not self.result.simple:
+            return
+        self._detailed = not self._detailed
+        self._showing_raw = False
+        self.raw_btn.configure(text="Show raw output")
+        self.detail_btn.configure(text="Show simple view" if self._detailed else "Show details")
         self.refresh_view()
 
     def _update_buttons(self) -> None:
@@ -205,6 +222,7 @@ class ToolPanel(ctk.CTkFrame):
         self.copy_btn.configure(state="normal" if has else "disabled")
         self.export_btn.configure(state="normal" if has else "disabled")
         self.raw_btn.configure(state="normal" if has and self.result.raw else "disabled")
+        self.detail_btn.configure(state="normal" if has and self.result.simple else "disabled")
 
     def copy_summary(self) -> None:
         if self.result and copy_to_clipboard(self.winfo_toplevel(), self.result.clipboard_summary()):

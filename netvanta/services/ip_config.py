@@ -48,9 +48,8 @@ def format_table(adapters: list[AdapterInfo]) -> str:
     return "\n".join(lines)
 
 
-def check_ip_configuration(
-    cancel: threading.Event | None = None, include_inactive: bool = False, detailed: bool = False
-) -> CheckResult:
+def check_ip_configuration(cancel: threading.Event | None = None) -> CheckResult:
+    """Simple view = the main connection. Details = every adapter plus IPv6 and traffic."""
     started = time.monotonic()
     adapters, error = get_adapters(cancel)
     result = CheckResult(tool="IP Configuration", duration_ms=(time.monotonic() - started) * 1000)
@@ -62,7 +61,7 @@ def check_ip_configuration(
         return result
 
     primary = pick_primary(adapters)
-    others = [a for a in adapters if a is not primary and (include_inactive or (a.is_up and a.kind != "Virtual"))]
+    others = [a for a in adapters if a is not primary]
     others.sort(key=lambda a: (not a.is_up, a.kind == "Virtual", a.name.lower()))
     up = sum(1 for a in adapters if a.is_up)
     if primary:
@@ -78,17 +77,20 @@ def check_ip_configuration(
         result.summary = "No network adapter is connected."
         result.recommendation = "Check the cable, Wi-Fi switch and that the adapter is enabled."
 
-    parts = []
     if primary:
-        parts.append("MAIN CONNECTION\n" + format_primary(primary))
+        main = "MAIN CONNECTION\n" + format_primary(primary)
+    else:
+        real = [a for a in others if a.is_up and a.kind != "Virtual"] or others[:3]
+        main = "NO WORKING CONNECTION FOUND\n" + format_table(real) if real else "NO NETWORK ADAPTERS FOUND"
+    if result.recommendation:
+        main += "\n\nWhat to do: " + result.recommendation
+    hidden = len(others)
+    result.simple = main + (f"\n\n({hidden} other adapter(s), mostly virtual or disconnected - press 'Show details' to see them.)" if hidden and primary else "")
+
+    parts = [main]
     if others:
-        parts.append("OTHER ADAPTERS\n" + format_table(others))
-    hidden = len(adapters) - len(others) - (1 if primary else 0)
-    if hidden > 0:
-        parts.append(f"({hidden} disconnected or virtual adapter(s) hidden - tick 'Show disconnected & virtual adapters' to list them.)")
-    if detailed:
-        shown = ([primary] if primary else []) + others
-        parts.append("FULL DETAILS (IPv6, traffic counters)\n\n" + "\n\n".join(format_adapter(a) for a in shown))
+        parts.append("ALL OTHER ADAPTERS\n" + format_table(others))
+    parts.append("FULL DETAILS (IPv6 addresses, traffic counters)\n\n" + "\n\n".join(format_adapter(a) for a in ([primary] if primary else []) + others))
     result.details = "\n\n".join(parts)
     result.rows = [adapter_row(a) for a in ([primary] if primary else []) + others]
     return result

@@ -7,7 +7,7 @@ import time
 from dataclasses import dataclass
 from typing import Callable
 
-from ..models.results import CheckResult, Status
+from ..models.results import STATUS_ICON, STATUS_WORD, CheckResult, Status
 from . import adapter_service, dns_service, internet_check_service, ping_service, tcp_check_service
 
 IP_PROBE = ("1.1.1.1", 443)
@@ -31,6 +31,13 @@ class Step:
         if self.advice:
             text += f"\n    Next step: {self.advice}"
         return text
+
+
+def checklist(steps: list[Step]) -> str:
+    """One friendly line per step: icon, name, verdict word."""
+    return "\n".join(
+        f"  {STATUS_ICON[s.status]} {STATUS_WORD[s.status]:<12}{s.title}{' (online)' if s.external else ''}" for s in steps
+    )
 
 
 def interpret(s: dict[str, Status]) -> list[tuple[Status, str, str]]:
@@ -199,6 +206,11 @@ def run_quick_diagnosis(
     )
     result.status = worst
     result.summary = findings[0][1] if len(findings) == 1 else f"{len(findings)} findings: " + findings[0][1]
+    result.simple = (
+        "WHAT WAS CHECKED\n" + checklist(steps) + "\n\nWHAT THIS MEANS\n"
+        + "\n".join(f"  {STATUS_ICON[lvl]}  {msg}\n       What to do: {adv}" for lvl, msg, adv in findings)
+        + "\n\n(Press 'Show details' for the evidence behind each check.)"
+    )
     result.details = "CHECKS\n\n" + body + "\n\nFINDINGS (based on the evidence above, not certain proof)\n\n" + "\n".join(
         f"- [{lvl.value}] {msg}\n    Next step: {adv}" for lvl, msg, adv in findings
     )

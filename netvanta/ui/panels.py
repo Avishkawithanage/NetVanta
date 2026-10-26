@@ -6,7 +6,7 @@ from __future__ import annotations
 import customtkinter as ctk
 
 from ..defaults import LIMITS, MAX_TRACE_HOPS
-from ..models.results import CheckResult, Status
+from ..models.results import STATUS_ICON, CheckResult, Status
 from ..services import (full_analysis_service, link_health_service, adapter_service, arp_service, dns_cache_service, dns_service, internet_check_service,
                         ip_config, ping_service, route_service, tcp_check_service, traceroute_service)
 from ..services.diagnosis_service import run_quick_diagnosis
@@ -23,16 +23,11 @@ class IPConfigPanel(ToolPanel):
     save_history = True
 
     def build_inputs(self, parent):
-        self.include = ctk.CTkCheckBox(parent, text="Show disconnected & virtual adapters")
-        self.include.pack(padx=16, pady=(14, 4), anchor="w")
-        self.detailed = ctk.CTkCheckBox(parent, text="Show full details (IPv6 addresses, traffic counters)")
-        self.detailed.pack(padx=16, pady=(0, 14), anchor="w")
-
-    def read_params(self):
-        return bool(self.include.get()), bool(self.detailed.get())
+        ctk.CTkLabel(parent, text="Press the button to read your current network settings. Use 'Show details' afterwards for every adapter and IPv6.",
+                     text_color=theme.MUTED, font=theme.font(12)).pack(padx=16, pady=14, anchor="w")
 
     def work(self, params, cancel, emit):
-        return ip_config.check_ip_configuration(cancel, include_inactive=params[0], detailed=params[1])
+        return ip_config.check_ip_configuration(cancel)
 
 
 class PingPanel(ToolPanel):
@@ -71,6 +66,7 @@ class QuickDiagnosisPanel(ToolPanel):
     run_label = "Run Quick Diagnosis"
     streaming = True
     wrap_output = True
+    replace_on_done = True
 
     def build_inputs(self, parent):
         self.target = self.field(parent, "Optional target to include", "", 300, 0, placeholder="e.g. a server or website")
@@ -79,14 +75,10 @@ class QuickDiagnosisPanel(ToolPanel):
         text = self.target.get().strip()
         return validate_host(text) if text else ""
 
-    def footer(self, result):
-        text = result.render()
-        marker = text.find("FINDINGS")
-        return text[marker:] if marker >= 0 else text
-
     def work(self, params, cancel, emit):
-        emit("Running checks - this usually takes 10 to 25 seconds ...\n")
-        return run_quick_diagnosis(self.ctx.settings.values, params, cancel, on_step=lambda step: emit(step.line() + "\n"))
+        emit("Checking your connection - this usually takes 10 to 25 seconds ...\n")
+        return run_quick_diagnosis(self.ctx.settings.values, params, cancel,
+                                   on_step=lambda step: emit(f"  {STATUS_ICON[step.status]}  {step.title}"))
 
 
 class DNSPanel(ToolPanel):
@@ -265,12 +257,10 @@ class LinkHealthPanel(ToolPanel):
     run_label = "Check Cable & Link"
     streaming = True
     wrap_output = True
+    replace_on_done = True
 
     def work(self, params, cancel, emit):
         return link_health_service.run_link_health(cancel, on_line=emit)
-
-    def footer(self, result):
-        return result.summary + "\n\n" + link_health_service.DISCLAIMER
 
 
 class FullAnalysisPanel(ToolPanel):
@@ -280,6 +270,7 @@ class FullAnalysisPanel(ToolPanel):
     run_label = "Run Full Analysis"
     streaming = True
     wrap_output = True
+    replace_on_done = True
 
     def build_inputs(self, parent):
         self.target = self.field(parent, "Optional target to include", "", 300, 0, placeholder="e.g. a server or website")
@@ -290,12 +281,6 @@ class FullAnalysisPanel(ToolPanel):
 
     def work(self, params, cancel, emit):
         return full_analysis_service.run_full_analysis(self.ctx.settings.values, params, cancel, emit)
-
-    def footer(self, result):
-        text = result.render()
-        start = text.find("PROBLEM LOCATION")
-        end = text.find("EVIDENCE - CABLE")
-        return text[start:end].strip() if start >= 0 and end > start else text
 
 
 PANELS: list[tuple[str, type[ToolPanel]]] = [

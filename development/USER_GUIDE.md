@@ -24,11 +24,23 @@ monitored targets and the latest monitor events. Unknown values read **Unknown**
 ## 4. Troubleshooting tools
 
 Pick a tool in the list. Every tool has the same layout: inputs, **Run**, **Stop**, **Clear**, a result badge with a one-line
-summary, the output, and **Copy summary**, **Export CSV / JSON...**, **Show raw output** at the bottom.
+summary, the output, and the buttons at the bottom.
+
+**Simple first, details on demand.** Results open in a short, friendly view (for example "what was checked" with a tick or
+cross per line, and "what to do next"). Press **Show details** for the deep information - evidence, every adapter, IPv6,
+timings - and **Show simple view** to go back. **Show raw output** displays the unprocessed command output for tools that use one.
+**Copy summary** copies the simple view; **Export** always contains the full data.
+
+| Symbol | Meaning |
+|---|---|
+| ✔ OK | That check passed |
+| ⚠ Check this | Worth a look, not necessarily a fault |
+| ✖ Problem | That check failed |
+| – Skipped | Not tested (with the reason in the details) |
 
 | Tool | How to use it |
 |---|---|
-| **IP Configuration** | Press *Check IP Configuration*. The primary connection is marked `* PRIMARY`. A `169.254.x.x` address means DHCP failed. |
+| **IP Configuration** | Press *Check IP Configuration*. You see your main connection (IP, mask, gateway, DNS). *Show details* lists every adapter, IPv6 and traffic. A `169.254.x.x` address means DHCP failed. |
 | **Ping** | Enter a host or IP, packets/timeout/interval, press *Start Ping*. Results appear live. *No reply* can also mean ICMP is blocked. |
 | **Full Analysis** | Best starting point. Runs the cable/link check *and* Quick Diagnosis (about 30 s) and shows a **PROBLEM LOCATION** table: cable, addressing, local network, DNS, internet, target. See section 4a. |
 | **Cable & Link Health** | Plug an Ethernet cable into the laptop, press *Check Cable & Link*. See section 4a. |

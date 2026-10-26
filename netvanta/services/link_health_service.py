@@ -13,7 +13,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 
-from ..models.results import CheckResult, Status
+from ..models.results import STATUS_ICON, CheckResult, Status
 from ..utils.subprocess_runner import as_list, run_powershell_json
 from . import adapter_service, ping_service
 
@@ -248,7 +248,7 @@ def run_link_health(cancel: threading.Event | None = None, on_line=None, burst_c
         result.summary = "Stopped by user - partial result, not a complete test."
         return result
 
-    blocks, worst, rows = [], Status.PASS, []
+    blocks, simple_blocks, worst, rows = [], [], Status.PASS, []
     for report in reports:
         findings = assess(report)
         level = (Status.FAIL if any(f[0] == Status.FAIL for f in findings)
@@ -272,12 +272,19 @@ def run_link_health(cancel: threading.Event | None = None, on_line=None, burst_c
         lines.append("  Findings:")
         lines += [f"   - [{lvl.value}] {msg}\n       Next step: {adv}" for lvl, msg, adv in findings]
         blocks.append("\n".join(lines))
+        facts = f"{'connected' if link.connected else 'not connected'}" + (f", {link.speed_mbps:g} Mbps" if link.speed_mbps else "")
+        if report.burst and report.burst.sent:
+            facts += f", {report.burst.loss_pct:g}% packet loss on the test"
+        simple_blocks.append(f"  {STATUS_ICON[level]}  {link.name}: {facts}\n" + "\n".join(f"       - {msg}\n         What to do: {adv}" for _l, msg, adv in findings))
         rows.append({"adapter": link.name, "connected": link.connected, "speed_mbps": link.speed_mbps or "", "max_mbps": link.max_mbps or "",
                      "errors": report.errors.errors, "flaps_24h": report.flaps if report.flaps is not None else "",
                      "burst_loss_pct": report.burst.loss_pct if report.burst and report.burst.sent else "", "level": level.value})
     result.status = worst
     result.rows = rows
     result.details = "\n\n".join(blocks) + "\n\n" + DISCLAIMER
+    result.simple = ("CABLE AND LINK RESULT\n\n" + "\n\n".join(simple_blocks)
+                     + "\n\n(A laptop cannot measure cable length or find a short circuit - these are hints, not proof. "
+                     "Press 'Show details' for speed, errors and test numbers.)")
     first = assess(reports[0])[0]
     result.summary = first[1] if len(reports) == 1 else f"{len(reports)} wired adapters checked. " + first[1]
     return result

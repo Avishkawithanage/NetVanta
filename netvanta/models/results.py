@@ -15,6 +15,10 @@ class Status(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
+STATUS_ICON = {Status.PASS: "✔", Status.FAIL: "✖", Status.WARNING: "⚠", Status.SKIPPED: "–", Status.UNKNOWN: "?"}
+STATUS_WORD = {Status.PASS: "OK", Status.FAIL: "Problem", Status.WARNING: "Check this", Status.SKIPPED: "Skipped", Status.UNKNOWN: "Unknown"}
+
+
 def utc_now_iso() -> str:
     """Canonical timestamp used for storage: UTC, ISO-8601."""
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -37,6 +41,7 @@ class CheckResult:
     target: str = ""
     status: Status = Status.UNKNOWN
     summary: str = ""
+    simple: str = ""  # short, friendly view shown by default; empty = the tool has nothing simpler than `details`
     details: str = ""  # NetVanta's readable body / interpretation
     raw: str = ""  # raw command output, kept separate from interpretation
     error: str = ""
@@ -66,4 +71,5 @@ class CheckResult:
         head = f"[{self.timestamp}] {self.tool}"
         if self.target:
             head += f" -> {self.target}"
-        return f"{head}\nStatus: {self.status.value}\n{self.render()}"
+        body = (self.simple + (f"\n\nError: {self.error}" if self.error else "")) if self.simple else self.render()
+        return f"{head}\nStatus: {self.status.value}\n{self.summary}\n\n{body}" if self.simple else f"{head}\nStatus: {self.status.value}\n{body}"

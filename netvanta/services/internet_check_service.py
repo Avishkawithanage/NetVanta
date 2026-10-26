@@ -86,6 +86,9 @@ def run_internet_check(endpoints: list[str], timeout: float = 6.0) -> CheckResul
         f"{'OK  ' if r.ok else 'FAIL'} {r.url}\n       {r.message}" + (f" ({r.ms:.0f} ms)" if r.ms else "") for r in results
     )
     ok = sum(1 for r in results if r.ok)
+    result.simple = "\n".join(
+        f"  {'✔' if r.ok else '✖'} {'OK' if r.ok else 'Problem':<9}{r.url.split('/')[2]}" + ("" if r.ok else f"  -  {r.message}") for r in results
+    ) + "\n\n(These checks contacted the internet. Press 'Show details' for the full URLs and timings.)"
     if not results:
         result.status, result.summary = Status.SKIPPED, "No endpoints configured."
     elif ok == len(results):
@@ -120,6 +123,7 @@ def get_public_ip(endpoint: str = "https://api.ipify.org", timeout: float = 6.0)
             "EXTERNAL CHECK - this contacted " + endpoint + ".\n"
             "If you use a VPN, proxy or several internet connections, the address shown is the one the service saw."
         )
+        result.simple = f"Your public IP address is {address}\n\n(Press 'Show details' for what this means with a VPN or proxy.)"
         result.rows = [{"public_ip": address, "endpoint": endpoint}]
     except ValueError:
         result.status, result.summary = Status.FAIL, "The service did not return a valid IP address."

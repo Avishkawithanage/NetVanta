@@ -65,7 +65,8 @@ Button click -> ToolPanel.read_params()  (validation.py, may raise ValidationErr
 
 - UI code never parses command output; services do, and are unit-tested.
 - Workers never touch Tk widgets; they `emit()` lines and return results through the queue.
-- `CheckResult` separates `summary` / `details` (NetVanta's interpretation) from `raw` (command output).
+- `CheckResult` separates `summary`, `simple` (the short friendly view shown by default), `details` (the deep view behind the
+  *Show details* button) and `raw` (command output). A tool with no `simple` text just shows `details` and the button is disabled.
 
 ## Where data is stored
 

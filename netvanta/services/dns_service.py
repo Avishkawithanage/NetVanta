@@ -43,6 +43,7 @@ def lookup(name: str, rtype: str = "A", resolver_ip: str = "", timeout: float = 
         result.status = Status.PASS
         result.summary = f"{len(records)} {rtype} record(s) for {name}."
         result.details = f"Resolver: {used}\nTTL: {answer.rrset.ttl}s\n\n" + "\n".join(records)
+        result.simple = f"{name} has {len(records)} {rtype} record(s):\n\n" + "\n".join(f"  {r}" for r in records) + "\n\n(Press 'Show details' for the resolver, TTL and timing.)"
         result.rows = [{"name": name, "type": rtype, "value": r, "ttl": answer.rrset.ttl, "resolver": used} for r in records]
     except dns.resolver.NXDOMAIN:
         result.status = Status.FAIL
